@@ -1,0 +1,63 @@
+name: Auto-Document Python Scripts
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_directory:
+        description: "Directory containing scripts to document"
+        required: true
+        default: "src"
+      reference_script:
+        description: "Path to the reference script (already documented)"
+        required: true
+        default: "src/reference.py"
+      dry_run:
+        description: "Dry run (print changes without committing)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  document:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run documentation script
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          uv run python scripts/document_code.py \
+            --directory "${{ github.event.inputs.target_directory }}" \
+            --reference "${{ github.event.inputs.reference_script }}" \
+            --dry-run "${{ github.event.inputs.dry_run }}"
+
+      - name: Commit documented files
+        if: ${{ github.event.inputs.dry_run == 'false' }}
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add -A
+          git diff --staged --quiet || git commit -m "docs: auto-document undocumented classes and functions [skip ci]"
+          git push
