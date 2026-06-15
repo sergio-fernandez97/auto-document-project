@@ -1,0 +1,11 @@
+[project]
+name = "auto-documenter"
+version = "0.1.0"
+description = "Auto-document Python scripts using Anthropic Claude"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.40.0",
+]
+ 
+[dependency-groups]
+dev = []
